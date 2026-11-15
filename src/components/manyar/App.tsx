@@ -127,7 +127,9 @@ export function ManyarApp() {
     if (!roomId) return;
     setSurveyBusy(true);
     try {
-      const rows = await getAllFromIndex<RatingRecord>('ratings', 'diningRoomId', roomId);
+      const rows = roomId === 'all'
+        ? await getAllFromStore<RatingRecord>('ratings')
+        : await getAllFromIndex<RatingRecord>('ratings', 'diningRoomId', roomId);
       rows.sort((a, b) => b.date.localeCompare(a.date));
       setSurveyRows(rows);
     } finally {
@@ -318,7 +320,10 @@ export function ManyarApp() {
   }
 
   async function createRating() {
-    if (!nutritionUser || !surveyRoomId || !surveyOptionId) return;
+    if (!nutritionUser || !surveyRoomId || !surveyOptionId || surveyRoomId === 'all' || surveyOptionId === 'all') {
+      alert('Elegí un comedor y una opción concretos para cargar una calificación.');
+      return;
+    }
     try {
       await addRating({
         diningRoomId: surveyRoomId,
@@ -342,13 +347,13 @@ export function ManyarApp() {
   const visibleSurveyRows = useMemo(() => {
     const cutoff = Date.now() - surveyWeeks * 7 * 24 * 60 * 60 * 1000;
     return surveyRows.filter((rating) => {
-      if (surveyOptionId && rating.optionId !== surveyOptionId) return false;
+      if (surveyOptionId && surveyOptionId !== 'all' && rating.optionId !== surveyOptionId) return false;
       return new Date(rating.date).getTime() >= cutoff;
     });
   }, [surveyRows, surveyOptionId, surveyWeeks]);
 
   const currentAcceptance = useMemo(() => {
-    if (!surveyRoomId || !surveyOptionId) return null;
+    if (!surveyRoomId || !surveyOptionId || surveyRoomId === 'all' || surveyOptionId === 'all') return null;
     return calculateAcceptances(
       surveyRows,
       [{ id: surveyOptionId }],
@@ -614,9 +619,11 @@ export function ManyarApp() {
             <SectionTitle title="Encuestas" subtitle="Calificaciones 1–5 y promedio de las últimas cuatro semanas." />
             <div className="mb-4 grid gap-2 rounded-2xl border border-stone-200 bg-white p-4 sm:grid-cols-4">
               <select value={surveyRoomId} onChange={(e) => setSurveyRoomId(e.target.value)} className="field">
+                <option value="all">Todos los comedores · 45.000 respuestas</option>
                 {rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
               </select>
               <select value={surveyOptionId} onChange={(e) => setSurveyOptionId(e.target.value)} className="field">
+                <option value="all">Todas las opciones</option>
                 {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
               </select>
               <select value={surveyWeeks} onChange={(e) => setSurveyWeeks(Number(e.target.value))} className="field">
@@ -626,7 +633,7 @@ export function ManyarApp() {
               </select>
               <div className="flex items-center justify-between rounded-lg bg-[#F8F3EB] px-3">
                 <span className="text-xs font-semibold">Aceptación</span>
-                <strong>{currentAcceptance ? number(currentAcceptance.acceptance, 1) : '—'}</strong>
+                <strong>{currentAcceptance ? number(currentAcceptance.acceptance, 1) : surveyRoomId === 'all' || surveyOptionId === 'all' ? 'por filtro' : '—'}</strong>
               </div>
             </div>
 
