@@ -118,6 +118,17 @@ export async function putInStore<T>(storeName: StoreName, value: T): Promise<voi
   }
 }
 
+export async function deleteFromStore(storeName: StoreName, key: IDBValidKey): Promise<void> {
+  const db = await openManyarDb();
+  try {
+    const transaction = db.transaction(storeName, 'readwrite');
+    transaction.objectStore(storeName).delete(key);
+    await transactionDone(transaction);
+  } finally {
+    db.close();
+  }
+}
+
 export async function countStore(storeName: StoreName): Promise<number> {
   const db = await openManyarDb();
   try {

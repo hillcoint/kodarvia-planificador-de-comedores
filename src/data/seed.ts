@@ -150,6 +150,18 @@ function generateRatings(
       userId: random() < 0.5 ? 'u-nutricion' : 'u-operaciones',
     });
   }
+  const mondayRatings = [5, 4, 5, 4, 5];
+  mondayRatings.forEach((value, offset) => {
+    const index = ratings.length - mondayRatings.length + offset;
+    ratings[index] = {
+      id: `R${String(index + 1).padStart(5, '0')}`,
+      diningRoomId: 'C01',
+      optionId: 'S3',
+      value,
+      date: `2026-11-09T15:0${offset}:00.000Z`,
+      userId: 'u-nutricion',
+    };
+  });
   return ratings;
 }
 
@@ -208,6 +220,20 @@ export function generateDemoSeed(): DemoSeed {
   const ratings = generateRatings(random, options, diningRooms);
   const menus = generateMenus(random, diningRooms);
   const events = generateEvents(random, diningRooms, options);
+  const createdLater = options.find((option) => option.id === 'SX12');
+  if (createdLater) {
+    events[0] = {
+      id: 'E0001',
+      timestamp: '2026-06-01T10:00:00.000Z',
+      userId: 'u-nutricion',
+      role: 'nutritionist',
+      entityType: 'option',
+      entityId: createdLater.id,
+      field: '__record__',
+      previousValue: null,
+      nextValue: createdLater,
+    };
+  }
 
   const settings: AppSettings = {
     id: 'settings',
@@ -233,12 +259,14 @@ export function generateDemoSeed(): DemoSeed {
   ];
 
   const snapshots: DailySnapshot[] = [{
-    id: 'snapshot-demo',
-    date: DEMO_REFERENCE_DATE.slice(0, 10),
-    createdAt: DEMO_REFERENCE_DATE,
+    id: 'snapshot-baseline',
+    date: '2025-11-15',
+    createdAt: '2025-11-15T00:00:00.000Z',
     state: {
       diningRooms: diningRooms.map((room) => ({ ...room })),
-      options: options.map((option) => ({ ...option, tags: [...option.tags] })),
+      options: options
+        .filter((option) => option.id !== 'SX12')
+        .map((option) => ({ ...option, tags: [...option.tags] })),
       settings: { ...settings },
     },
   }];
