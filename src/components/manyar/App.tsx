@@ -5,6 +5,7 @@ import { addRating, reconstructStateAt, redoLastChange, resolveConflictWithValue
 import type { AppEvent, AppSettings, AppUser, DiningRoom, RatingRecord, StoredMenu } from '../../data/types';
 import type { MenuLine, MenuOption, MenuPlanResult, MenuTime } from '../../domain/menu/types';
 import { applyAcceptances, calculateAcceptances } from '../../domain/ratings/acceptance';
+import { planMenu } from '../../domain/menu/planner';
 import { planDayInWorker, planMenuInWorker, recalculateAcceptancesInWorker } from '../../workers/client';
 import { subscribeSync, type SyncNotice } from '../../lib/sync';
 import { localDateTime, money, number, percent, tomorrowIso } from '../../lib/format';
@@ -842,20 +843,68 @@ function PlanResult({ result, diners }: { result: MenuPlanResult; diners: number
 }
 
 function StateAtSummary({ state }: { state: Awaited<ReturnType<typeof reconstructStateAt>> }) {
-  const consome = calculateAcceptances(
+  const room = state.diningRooms.find((item) => item.id === 'C01') ?? state.diningRooms[0];
+  const acceptances = calculateAcceptances(
     state.ratings,
-    [{ id: 'S3' }],
-    'C01',
+    state.options.map(({ id }) => ({ id })),
+    room?.id ?? 'C01',
     new Date(state.at),
     state.settings.surveyWindowWeeks,
-  )[0];
+  );
+  const consome = acceptances.find((item) => item.optionId === 'S3');
+  const acceptedOptions = applyAcceptances(state.options, acceptances);
+  const diabetes = room ? Math.max(1, Math.round(room.diners * room.diabetesPercent / 100)) : 0;
+  const generalDiners = room ? Math.max(1, room.diners - diabetes) : 0;
+  const historicalMenu = room
+    ? planMenu({
+        options: acceptedOptions,
+        diners: generalDiners,
+        budget: room.budget,
+        line: 'general',
+        limits: {
+          minKcal: state.settings.minKcal,
+          maxKcal: state.settings.maxKcal,
+          minProtein: state.settings.minProtein,
+          maxSodium: state.settings.maxSodium,
+          maxCarbsDiabetes: state.settings.maxCarbsDiabetes,
+        },
+        optionCap: state.settings.optionCap,
+        optionCapThreshold: state.settings.optionCapThreshold,
+      })
+    : null;
+  const chosen = historicalMenu?.status === 'optimal'
+    ? historicalMenu.allocations.filter((item) => item.proportion > 0.0000005)
+    : [];
+
   return (
-    <div className="mt-4 grid gap-3 sm:grid-cols-4">
-      <Metric label="Comedores" value={String(state.diningRooms.length)} />
-      <Metric label="Opciones" value={String(state.options.length)} />
-      <Metric label="Encuestas hasta esa hora" value={state.ratings.length.toLocaleString('es-MX')} />
-      <Metric label="Consomé C01" value={consome.noData ? '3,0 · sin datos' : number(consome.acceptance, 1)} />
-      <div className="sm:col-span-4 text-xs text-stone-500">Eventos aplicados desde la instantánea: {state.appliedEvents}</div>
+    <div className="mt-4 space-y-4">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Metric label="Comedores" value={String(state.diningRooms.length)} />
+        <Metric label="Opciones" value={String(state.options.length)} />
+        <Metric label="Encuestas hasta esa hora" value={state.ratings.length.toLocaleString('es-MX')} />
+        <Metric label="Consomé C01" value={consome?.noData ? '3,0 · sin datos' : number(consome?.acceptance, 1)} />
+      </div>
+      <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+        <h4 className="font-bold">Menú que se habría calculado para {room?.name ?? 'C01'}</h4>
+        {historicalMenu?.status === 'optimal' ? (
+          <>
+            <p className="mt-1 text-sm text-stone-600">
+              Aceptación {number(historicalMenu.metrics?.acceptancePerTime, 3)} · costo {money(historicalMenu.metrics?.cost)}
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {chosen.map((item) => (
+                <div key={item.option.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm">
+                  <span className="truncate pr-3">{TIME_LABEL[item.option.time]} · {item.option.name}</span>
+                  <strong className="tabular-nums">{percent(item.proportion)}</strong>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-sm font-semibold text-amber-800">{historicalMenu?.message ?? 'No se pudo reconstruir un menú para ese momento.'}</p>
+        )}
+      </div>
+      <div className="text-xs text-stone-500">Eventos aplicados desde la instantánea: {state.appliedEvents}</div>
     </div>
   );
 }
