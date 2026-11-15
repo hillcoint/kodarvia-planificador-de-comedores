@@ -1,11 +1,13 @@
-import type { MenuPlanningInput, MenuOption } from '../domain/menu/types';
-import type { OptionAcceptance } from '../domain/ratings/acceptance';
-import type { RatingRecord } from '../data/types';
-import type { MenuPlanResult } from '../domain/menu/types';
+import type { MenuPlanningInput, MenuOption, MenuPlanResult } from '../domain/menu/types';
+import type { DayPlanResult } from '../domain/menu/day-planner';
+import type { AcceptanceMatrix, OptionAcceptance } from '../domain/ratings/acceptance';
+import type { AppSettings, DiningRoom, RatingRecord } from '../data/types';
 
 type WorkerResult =
   | { id: string; ok: true; type: 'plan-menu'; result: MenuPlanResult }
+  | { id: string; ok: true; type: 'plan-day'; result: DayPlanResult }
   | { id: string; ok: true; type: 'recalculate-acceptance'; result: OptionAcceptance[] }
+  | { id: string; ok: true; type: 'recalculate-all-acceptances'; result: AcceptanceMatrix }
   | { id: string; ok: false; error: string };
 
 let worker: Worker | null = null;
@@ -44,6 +46,16 @@ export function planMenuInWorker(input: MenuPlanningInput): Promise<MenuPlanResu
   return requestWorker('plan-menu', input);
 }
 
+export function planDayInWorker(payload: {
+  date: string;
+  diningRooms: DiningRoom[];
+  options: MenuOption[];
+  ratings: RatingRecord[];
+  settings: AppSettings;
+}): Promise<DayPlanResult> {
+  return requestWorker('plan-day', payload);
+}
+
 export function recalculateAcceptancesInWorker(payload: {
   ratings: RatingRecord[];
   options: Pick<MenuOption, 'id'>[];
@@ -52,4 +64,14 @@ export function recalculateAcceptancesInWorker(payload: {
   windowWeeks: number;
 }): Promise<OptionAcceptance[]> {
   return requestWorker('recalculate-acceptance', payload);
+}
+
+export function recalculateAllAcceptancesInWorker(payload: {
+  ratings: RatingRecord[];
+  options: Pick<MenuOption, 'id'>[];
+  diningRoomIds: string[];
+  referenceDate: string;
+  windowWeeks: number;
+}): Promise<AcceptanceMatrix> {
+  return requestWorker('recalculate-all-acceptances', payload);
 }
