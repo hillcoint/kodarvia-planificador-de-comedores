@@ -22,6 +22,6 @@ jobs:
       - name: Run functional and performance tests
         run: npm run test:quick
       - name: Run engine coverage
-        run: npm test
+        run: SKIP_PERF_ASSERT=1 npm test
       - name: Build
         run: npm run build
