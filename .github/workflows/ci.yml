@@ -19,7 +19,9 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
-      - name: Run tests
+      - name: Run functional and performance tests
+        run: npm run test:quick
+      - name: Run engine coverage
         run: npm test
       - name: Build
         run: npm run build

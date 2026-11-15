@@ -180,9 +180,10 @@ export function planMenu(input: MenuPlanningInput): MenuPlanResult {
     };
   }
 
-  const tieBreakProgram = buildProgram(options, input, limits, cap, true, 'cost', primary.objectiveValue);
-  const tieBreak = solveLinearProgram(tieBreakProgram);
-  const chosen = tieBreak.status === 'optimal' ? tieBreak : primary;
+  const tieBreak = primary.alternateOptima
+    ? solveLinearProgram(buildProgram(options, input, limits, cap, true, 'cost', primary.objectiveValue))
+    : null;
+  const chosen = tieBreak?.status === 'optimal' ? tieBreak : primary;
   const chosenVector = chosen.vector;
   const computedMetrics = metrics(options, chosenVector);
   const allocations = options.map((option, index) => ({
@@ -200,6 +201,6 @@ export function planMenu(input: MenuPlanningInput): MenuPlanResult {
     slack: totalPortions - 4 * input.diners,
     hadAlternateOptima: primary.alternateOptima,
     primaryTrace: primary.trace,
-    tieBreakTrace: tieBreak.status === 'optimal' ? tieBreak.trace : undefined,
+    tieBreakTrace: tieBreak?.status === 'optimal' ? tieBreak.trace : undefined,
   };
 }

@@ -16,8 +16,9 @@ describe('full day planning', () => {
     expect(result.rooms).toHaveLength(14);
     expect(result.usedCapacity).toBeLessThanOrEqual(3200);
     expect(result.remainingCapacity).toBe(3200 - result.usedCapacity);
-    expect(result.acceptanceElapsedMs).toBeLessThan(1000);
-    expect(result.elapsedMs).toBeLessThan(2000);
+    const instrumented = process.argv.includes('--coverage');
+    expect(result.acceptanceElapsedMs).toBeLessThan(instrumented ? 2500 : 1000);
+    expect(result.elapsedMs).toBeLessThan(instrumented ? 6000 : 2000);
     expect(result.rooms.filter((room) => room.status === 'calculated').length).toBeGreaterThan(0);
   });
 
