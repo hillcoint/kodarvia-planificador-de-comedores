@@ -153,3 +153,30 @@
     color: var(--color-foreground);
   }
 }
+
+
+.field {
+  width: 100%;
+  min-height: 2.5rem;
+  border: 1px solid #d6d3d1;
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #1c1917;
+  outline: none;
+}
+.field:focus {
+  border-color: #7A1F3D;
+  box-shadow: 0 0 0 2px rgb(122 31 61 / 0.12);
+}
+.print-only { display: none; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+@media print {
+  body { background: white !important; }
+  header, .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-area { padding: 0 !important; }
+  .print-area article { box-shadow: none !important; border-color: #aaa !important; }
+}

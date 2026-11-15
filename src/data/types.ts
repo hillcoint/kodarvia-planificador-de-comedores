@@ -43,6 +43,7 @@ export interface StoredMenu {
   sodium?: number;
   allocations?: Array<{ optionId: string; proportion: number; portions: number }>;
   slack?: number;
+  message?: string;
 }
 
 export interface AppEvent {
