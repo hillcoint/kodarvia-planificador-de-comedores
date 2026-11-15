@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ensureDemoData, getAllFromIndex, getAllFromStore, getFromStore, putInStore } from '../../data/db';
-import { addRating, reconstructStateAt, redoLastChange, undoLastChange, updateEntityField } from '../../data/mutations';
+import { addRating, reconstructStateAt, redoLastChange, resolveConflictWithValue, undoLastChange, updateEntityField } from '../../data/mutations';
 import type { AppEvent, AppSettings, AppUser, DiningRoom, RatingRecord, StoredMenu } from '../../data/types';
 import type { MenuLine, MenuOption, MenuPlanResult, MenuTime } from '../../domain/menu/types';
 import { applyAcceptances, calculateAcceptances } from '../../domain/ratings/acceptance';
@@ -430,7 +430,29 @@ export function ManyarApp() {
               <div className="mt-1 text-xs">Aplicado: {String(notice.appliedValue)} · Otro valor: {String(notice.competingValue)}</div>
             ) : null}
           </div>
-          <button className="font-bold" onClick={() => setNotice(null)}>×</button>
+          <div className="flex shrink-0 items-center gap-2">
+            {notice.competingValue !== undefined && ['diningRoom', 'option', 'settings'].includes(notice.entityType) ? (
+              <button
+                className="rounded-md border border-amber-400 bg-white px-2 py-1 text-xs font-bold"
+                onClick={async () => {
+                  const actor = notice.entityType === 'diningRoom' ? operationsUser : nutritionUser;
+                  if (!actor) return;
+                  await resolveConflictWithValue({
+                    entityType: notice.entityType as 'diningRoom' | 'option' | 'settings',
+                    entityId: notice.entityId,
+                    field: notice.field,
+                    value: notice.competingValue,
+                    actor,
+                  });
+                  setNotice(null);
+                  await refreshCore();
+                }}
+              >
+                Usar el otro valor
+              </button>
+            ) : null}
+            <button className="font-bold" onClick={() => setNotice(null)}>×</button>
+          </div>
         </div>
       ) : null}
 

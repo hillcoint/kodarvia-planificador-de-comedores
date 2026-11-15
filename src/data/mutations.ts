@@ -183,6 +183,55 @@ export async function updateEntityField(input: {
   return null;
 }
 
+export async function resolveConflictWithValue(input: {
+  entityType: EditableEntity;
+  entityId: string;
+  field: string;
+  value: unknown;
+  actor: AppUser;
+}) {
+  const storeName = STORE_BY_ENTITY[input.entityType];
+  const current = await getFromStore<Record<string, unknown>>(storeName, input.entityId);
+  if (!current) throw new Error('No se encontró el registro del conflicto');
+  const timestamp = new Date().toISOString();
+  const previousValue = current[input.field];
+  const metaByField = (current.__fieldMeta as Record<string, FieldMeta> | undefined) ?? {};
+  await putInStore(storeName, {
+    ...current,
+    [input.field]: input.value,
+    __fieldMeta: {
+      ...metaByField,
+      [input.field]: { timestamp, role: input.actor.role, value: input.value },
+    },
+    updatedAt: timestamp,
+    updatedBy: input.actor.id,
+    version: typeof current.version === 'number' ? current.version + 1 : current.version,
+  });
+  await recordEvent({
+    id: liveEventId(),
+    timestamp,
+    userId: input.actor.id,
+    role: input.actor.role,
+    entityType: 'conflict',
+    entityId: input.entityId,
+    field: input.field,
+    previousValue,
+    nextValue: input.value,
+  });
+  if (input.entityType !== 'settings') await bumpDataVersion(input.actor);
+  publishSync({
+    type: 'data-changed',
+    entityType: input.entityType,
+    entityId: input.entityId,
+    field: input.field,
+    role: input.actor.role,
+    timestamp,
+    appliedValue: input.value,
+    competingValue: previousValue,
+    message: 'El usuario eligió manualmente el otro valor del conflicto.',
+  });
+}
+
 export async function addRating(input: {
   diningRoomId: string;
   optionId: string;
