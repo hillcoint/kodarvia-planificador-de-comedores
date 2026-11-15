@@ -97,6 +97,21 @@ export async function getAllFromStore<T>(storeName: StoreName): Promise<T[]> {
   }
 }
 
+export async function getAllFromIndex<T>(
+  storeName: StoreName,
+  indexName: string,
+  query?: IDBValidKey | IDBKeyRange,
+): Promise<T[]> {
+  const db = await openManyarDb();
+  try {
+    const transaction = db.transaction(storeName, 'readonly');
+    const index = transaction.objectStore(storeName).index(indexName);
+    return await requestResult(index.getAll(query)) as T[];
+  } finally {
+    db.close();
+  }
+}
+
 export async function getFromStore<T>(storeName: StoreName, key: IDBValidKey): Promise<T | undefined> {
   const db = await openManyarDb();
   try {

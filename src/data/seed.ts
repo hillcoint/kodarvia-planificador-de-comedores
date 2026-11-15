@@ -1,3 +1,4 @@
+import { ADMIN_KEY } from '../config';
 import { TEST_MENU_OPTIONS } from '../domain/menu/fixtures';
 import type { MenuOption, MenuTime } from '../domain/menu/types';
 import type {
@@ -246,7 +247,7 @@ export function generateDemoSeed(): DemoSeed {
     optionCapThreshold: 30,
     surveyWindowWeeks: 4,
     centralCapacity: 3200,
-    adminKey: [1, 2, 3, 4].join(''),
+    adminKey: ADMIN_KEY,
     version: 1,
     updatedAt: DEMO_REFERENCE_DATE,
     updatedBy: 'u-admin',
